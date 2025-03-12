@@ -2,61 +2,56 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Container,
-  Heading,
-  Text,
-  SimpleGrid,
-  Box,
-  VStack,
+  useDisclosure,
   useToast,
 } from '@chakra-ui/react';
-import VocabularyForm from './components/VocabularyForm';
-import DraggableContainer from './components/DraggableContainer';
-import { VocabularyItem, ProficiencyLevel, Container as VocContainer } from './models/types';
+import Layout from './components/Layout';
+import VocabularyGrid from './components/VocabularyGrid';
+import AddWordModal from './components/AddWordModal';
+import { VocabularyItem, ProficiencyLevel } from './models/types';
 import { getVocabularyItems, saveVocabularyItems } from './utils/storage';
 
 export default function Home() {
   const [vocabularyItems, setVocabularyItems] = useState<VocabularyItem[]>([]);
-  const [containers, setContainers] = useState<VocContainer[]>([
-    { id: 'unknown', title: '未習得', items: [] },
-    { id: 'learning', title: '学習中', items: [] },
-    { id: 'mastered', title: '習得済み', items: [] },
-  ]);
+  const [filteredItems, setFilteredItems] = useState<VocabularyItem[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
   // 初期データの読み込み
   useEffect(() => {
     const items = getVocabularyItems();
     setVocabularyItems(items);
-    
-    // コンテナにアイテムを振り分ける
-    distributeItemsToContainers(items);
   }, []);
 
-  // アイテムをコンテナに振り分ける関数
-  const distributeItemsToContainers = (items: VocabularyItem[]) => {
-    const newContainers = [...containers];
+  // カテゴリが変更されたとき、またはvocabularyItemsが変更されたときにフィルタリング
+  useEffect(() => {
+    let filtered = [...vocabularyItems];
     
-    // コンテナのアイテムをクリア
-    newContainers.forEach(container => {
-      container.items = [];
-    });
+    // カテゴリによるフィルタリング
+    switch (activeCategory) {
+      case 'unknown':
+        filtered = filtered.filter(item => item.proficiency === ProficiencyLevel.UNKNOWN);
+        break;
+      case 'learning':
+        filtered = filtered.filter(item => item.proficiency === ProficiencyLevel.LEARNING);
+        break;
+      case 'mastered':
+        filtered = filtered.filter(item => item.proficiency === ProficiencyLevel.MASTERED);
+        break;
+      case 'favorite':
+        filtered = filtered.filter(item => item.category === 'お気に入り');
+        break;
+      case 'new':
+        // 最近追加された単語（例: 1週間以内）
+        const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        filtered = filtered.filter(item => item.createdAt > oneWeekAgo);
+        break;
+      // 'all'の場合はフィルタリングなし
+    }
     
-    // アイテムを習得度に応じて振り分ける
-    items.forEach(item => {
-      const containerId = item.proficiency;
-      const containerIndex = newContainers.findIndex(c => c.id === containerId);
-      
-      if (containerIndex !== -1) {
-        newContainers[containerIndex].items.push(item);
-      } else {
-        // デフォルトは未習得コンテナに追加
-        newContainers[0].items.push(item);
-      }
-    });
-    
-    setContainers(newContainers);
-  };
+    setFilteredItems(filtered);
+  }, [vocabularyItems, activeCategory]);
 
   // 単語追加時の処理
   const handleAddWord = (newItem: VocabularyItem) => {
@@ -64,14 +59,13 @@ export default function Home() {
     setVocabularyItems(updatedItems);
     saveVocabularyItems(updatedItems);
     
-    // コンテナに追加
-    const newContainers = [...containers];
-    const containerIndex = newContainers.findIndex(c => c.id === newItem.proficiency);
-    
-    if (containerIndex !== -1) {
-      newContainers[containerIndex].items.push(newItem);
-      setContainers(newContainers);
-    }
+    toast({
+      title: '単語が追加されました',
+      description: `"${newItem.word}"が単語リストに追加されました`,
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
   };
 
   // 単語削除時の処理
@@ -82,9 +76,6 @@ export default function Home() {
     
     setVocabularyItems(updatedItems);
     saveVocabularyItems(updatedItems);
-    
-    // コンテナも更新
-    distributeItemsToContainers(updatedItems);
     
     // 削除通知
     if (itemToDelete) {
@@ -98,63 +89,68 @@ export default function Home() {
     }
   };
 
-  // ドラッグ＆ドロップ時の処理
-  const handleDrop = (item: VocabularyItem, targetContainerId: string) => {
-    // 同じコンテナ内でのドロップは無視
-    if (item.proficiency === targetContainerId) {
-      return;
-    }
-    
-    // アイテムの習得度を更新
-    const updatedItems = vocabularyItems.map(vocItem => {
-      if (vocItem.id === item.id) {
-        return {
-          ...vocItem,
-          proficiency: targetContainerId as ProficiencyLevel,
-          updatedAt: Date.now(),
-        };
-      }
-      return vocItem;
-    });
-    
-    setVocabularyItems(updatedItems);
-    saveVocabularyItems(updatedItems);
-    
-    // コンテナを更新
-    distributeItemsToContainers(updatedItems);
+  // ドラッグ＆ドロップによる順序変更の処理
+  const handleUpdateItems = (newItems: VocabularyItem[]) => {
+    setVocabularyItems(newItems);
+    saveVocabularyItems(newItems);
     
     toast({
-      title: '単語が移動されました',
-      description: `"${item.word}"が${containers.find(c => c.id === targetContainerId)?.title || ''}に移動されました`,
-      status: 'info',
+      title: '単語の順序が更新されました',
+      status: 'success',
       duration: 2000,
       isClosable: true,
     });
   };
 
+  // サイドバーのカテゴリ選択時の処理
+  const handleCategoryChange = (category: string) => {
+    setActiveCategory(category);
+  };
+
+  // 習得レベルの更新処理
+  const handleUpdateProficiency = (itemId: string, level: ProficiencyLevel) => {
+    const updatedItems = vocabularyItems.map(item => 
+      item.id === itemId 
+        ? { ...item, proficiency: level, updatedAt: Date.now() } 
+        : item
+    );
+    
+    setVocabularyItems(updatedItems);
+    saveVocabularyItems(updatedItems);
+    
+    const item = updatedItems.find(item => item.id === itemId);
+    if (item) {
+      toast({
+        title: '習得状態が更新されました',
+        description: `"${item.word}"の習得状態が更新されました`,
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // 追加ボタンクリック時の処理
+  const handleAddClick = () => {
+    onOpen(); // 追加フォームを開く
+  };
+
   return (
-    <Container maxW="container.xl" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Box textAlign="center">
-          <Heading as="h1" size="xl" mb={2}>ボキャブラリー学習アプリ</Heading>
-          <Text color="gray.600">単語を登録して、ドラッグ＆ドロップで整理しましょう</Text>
-        </Box>
-        
-        <VocabularyForm onAddWord={handleAddWord} />
-        
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-          {containers.map(container => (
-            <DraggableContainer
-              key={container.id}
-              id={container.id}
-              title={container.title}
-              items={container.items}
-              onDrop={handleDrop}
-              onDelete={handleDeleteItem}
-            />
-          ))}
-        </SimpleGrid>
-      </VStack>
-    </Container>
+    <Layout onCategoryChange={handleCategoryChange} activeCategory={activeCategory}>
+      <VocabularyGrid 
+        items={vocabularyItems} // 全てのアイテムを表示するように変更
+        onDelete={handleDeleteItem}
+        onAddClick={handleAddClick}
+        onUpdateItems={handleUpdateItems}
+        onUpdateProficiency={handleUpdateProficiency}
+      />
+      
+      {/* 単語追加用のモーダル */}
+      <AddWordModal 
+        isOpen={isOpen} 
+        onClose={onClose} 
+        onAddWord={handleAddWord} 
+      />
+    </Layout>
   );
 } 
