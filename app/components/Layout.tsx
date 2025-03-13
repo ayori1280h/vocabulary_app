@@ -29,7 +29,7 @@ export default function Layout({ children, activeCategory = 'all', onCategoryCha
         h="60px"
       >
         <Text fontSize="2xl" fontWeight="bold">
-          Vocabank
+          Vocabo
         </Text>
         
         <InputGroup maxW="md">

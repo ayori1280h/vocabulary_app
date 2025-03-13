@@ -16,8 +16,7 @@ export class GeminiApiClient {
     // v1エンドポイントを明示的に使用するよう設定
     // apiVersionは第2引数のオプションとして渡す必要がある
     this.model = genAI.getGenerativeModel(
-      { model: 'gemini-pro' },
-      { apiVersion: 'v1' } // v1betaではなくv1を明示的に指定
+      { model: "gemini-1.5-flash" }
     );
   }
 
