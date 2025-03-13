@@ -8,6 +8,7 @@ require('dotenv').config(); // 環境変数を読み込む
 
 // SQLiteリポジトリをインポート
 const wordRepository = require('./repositories/wordRepository');
+const { circIn } = require('framer-motion');
 // Express アプリケーションの初期化
 const app = express();
 const port = process.env.PORT || 5000;
@@ -43,7 +44,8 @@ async function generateSpeech(text, config = {}) {
   const language = config.language || 'en-US'; // 米国英語をデフォルトに
   
   // 一意のファイル名を生成
-  const timestamp = Date.now();
+  // const timestamp = Date.now(); 
+  const timestamp = 'sample'
   const filename = `speech_${timestamp}.mp3`;
   const outputPath = path.join(AUDIO_DIR, filename);
   
@@ -55,15 +57,16 @@ async function generateSpeech(text, config = {}) {
   
   if (useMockEngine) {
     // モック：実際の音声エンジンがない場合、テキストをファイルに書き出すだけ
-    fs.writeFileSync(path.join(AUDIO_DIR, `${timestamp}.txt`), 
-      `テキスト：${text}\n設定：${JSON.stringify({...config, language})}`);
+    // fs.writeFileSync(path.join(AUDIO_DIR, `${timestamp}.txt`), 
+    //   `テキスト：${text}\n設定：${JSON.stringify({...config, language})}`);
     
     // 音声ファイルを模倣（または他の方法で音声ファイルを取得）
     return new Promise((resolve, reject) => {
       // 空のMP3ファイルを作成（または、サンプルMP3をコピーするなど）
-      fs.copyFileSync(path.join(__dirname, 'sample.mp3'), outputPath);
+      // fs.copyFileSync(path.join(__dirname, 'sample.mp3'), outputPath);
       resolve(filename);
     });
+
   } else {
     // 実際の音声エンジンを使用する場合のサンプルコード（英語ネイティブの発音用）
     
@@ -106,7 +109,8 @@ app.post('/api/speech', async (req, res) => {
     const filename = await generateSpeech(text, config);
     
     // ファイルを送信
-    res.sendFile(path.join(AUDIO_DIR, filename));
+    // res.sendFile(path.join(AUDIO_DIR, filename));
+    res.status(200).json();
   } catch (error) {
     console.error('音声生成エラー:', error);
     res.status(500).json({ error: '音声生成に失敗しました' });

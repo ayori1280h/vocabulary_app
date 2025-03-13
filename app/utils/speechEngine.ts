@@ -26,7 +26,8 @@ interface SpeechEngineConfig {
 export async function textToSpeech(text: string, config: SpeechEngineConfig = {}): Promise<string> {
   try {
     // ApiServiceを使用して発音を取得
-    return await ApiService.getPronunciation(text);
+    // return await ApiService.getPronunciation(text);
+    return useBrowserSpeechSynthesis(text, config);
   } catch (error) {
     console.error('Error generating speech:', error);
     
