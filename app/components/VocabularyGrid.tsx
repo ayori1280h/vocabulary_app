@@ -26,6 +26,7 @@ import { pronounceWord } from '../utils/speechEngine';
 import { FaPause, FaVolumeUp, FaInfoCircle, FaRobot } from 'react-icons/fa';
 import { Icon } from '@chakra-ui/react';
 import { HStack } from '@chakra-ui/react';
+import { ApiService } from '../services/api';
 
 interface VocabularyGridProps {
   items: VocabularyItem[];
@@ -77,25 +78,11 @@ export default function VocabularyGrid({
     try {
       setLoadingDetail(true);
       
-      // APIから単語の詳細情報を取得
-      const response = await fetch(`/api/word-info?word=${encodeURIComponent(item.word)}`);
-      
-      if (!response.ok) {
-        throw new Error('APIリクエストに失敗しました');
-      }
-      
-      const data = await response.json();
+      // IDを使用して単語の詳細情報をDBから取得
+      const wordDetails = await ApiService.getWordDetails(parseInt(item.id));
       
       // 詳細情報を更新
-      if (data && data.word) {
-        setSelectedItem({
-          ...item,
-          meaning: data.meaning || item.meaning,
-          examples: data.examples || item.examples,
-          etymology: data.etymology || item.etymology,
-        });
-      }
-      
+      setSelectedItem(wordDetails);
       setIsDetailLoaded(true);
     } catch (error) {
       console.error('単語情報の取得エラー:', error);
@@ -139,8 +126,8 @@ export default function VocabularyGrid({
     try {
       setLoadingDetail(true);
       
-      // AIを使用して単語情報を取得するAPIを呼び出す
-      const response = await fetch(`/api/ai-word-info?word=${encodeURIComponent(selectedItem.word)}`);
+      // バックエンドのGemini APIエンドポイントを呼び出す
+      const response = await fetch(`/api/sqlite-proxy/gemini-word-info?word=${encodeURIComponent(selectedItem.word)}`);
       
       if (!response.ok) {
         throw new Error('AIリクエストに失敗しました');
@@ -150,7 +137,8 @@ export default function VocabularyGrid({
       
       // AI生成の詳細情報を更新
       if (data && data.word) {
-        setSelectedItem({
+        // まずUIの状態を更新
+        const updatedItem = {
           ...selectedItem,
           meaning: data.meaning || selectedItem.meaning,
           examples: data.examples || selectedItem.examples,
@@ -159,15 +147,59 @@ export default function VocabularyGrid({
           relatedWords: data.relatedWords || selectedItem.relatedWords,
           phonetic: data.phonetic || selectedItem.phonetic,
           partOfSpeech: data.partOfSpeech || selectedItem.partOfSpeech
-        });
+        };
         
-        toast({
-          title: 'AI情報取得完了',
-          description: '単語の詳細情報がAIによって更新されました。',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+        setSelectedItem(updatedItem);
+        
+        // DBに保存（情報を上書き）
+        try {
+          // DBに渡すデータ形式に変換
+          const dbWordData = {
+            phonetic: data.phonetic || '',
+            part_of_speech: data.partOfSpeech || '',
+            definitions: [
+              {
+                definition: data.meaning || '',
+                part_of_speech: data.partOfSpeech || ''
+              }
+            ],
+            examples: (data.examples || []).map((example: string, index: number) => ({
+              example,
+              translation: data.examplesTranslation?.[index] || ''
+            })),
+            etymologies: data.etymology ? [{ etymology: data.etymology }] : [],
+            related_words: (data.relatedWords || []).map((word: string) => ({
+              related_word: word,
+              relationship_type: ''
+            }))
+          };
+          
+          // DBを更新
+          await ApiService.updateWordDetails(parseInt(selectedItem.id), dbWordData);
+          
+          // 親コンポーネントの単語リストも更新が必要ないので削除
+          if (onUpdateProficiency) {
+            // 状態の更新のみ
+            onUpdateProficiency(selectedItem.id, updatedItem.proficiency);
+          }
+          
+          toast({
+            title: 'AI情報取得完了',
+            description: '単語の詳細情報がAIによって更新されDBに保存されました。',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        } catch (error) {
+          console.error('DB更新エラー:', error);
+          toast({
+            title: 'DB更新エラー',
+            description: 'AIが生成した単語情報のDB保存に失敗しました。',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
       }
     } catch (error) {
       console.error('AI情報取得エラー:', error);

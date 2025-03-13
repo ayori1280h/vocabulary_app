@@ -1,9 +1,10 @@
 'use client';
 
 import axios from 'axios';
+import { ApiService } from '../services/api';
 
-// ローカル音声エンジンのAPIエンドポイント（実際のエンドポイントに置き換えてください）
-const SPEECH_ENGINE_API = 'http://localhost:5000/api/speech';
+// サーバー側の音声APIエンドポイント - 直接使用しなくなるのでコメントアウト
+// const SPEECH_API_ENDPOINT = '/api/sqlite-proxy/speech';
 
 /**
  * 音声エンジンAPIの設定
@@ -24,31 +25,8 @@ interface SpeechEngineConfig {
  */
 export async function textToSpeech(text: string, config: SpeechEngineConfig = {}): Promise<string> {
   try {
-    // デフォルト設定
-    const defaultConfig: SpeechEngineConfig = {
-      voice: 'english', // 英語ネイティブの声をデフォルトに
-      speed: 1.0,      // 通常速度
-      pitch: 1.0,      // 通常の高さ
-      volume: 1.0,     // 最大音量
-      language: 'en-US' // 米国英語をデフォルトに
-    };
-    
-    // 設定をマージ
-    const mergedConfig = { ...defaultConfig, ...config };
-    
-    // ローカルAPIにリクエスト
-    const response = await axios.post(SPEECH_ENGINE_API, {
-      text,
-      ...mergedConfig
-    }, {
-      responseType: 'blob' // バイナリデータとして受け取る
-    });
-    
-    // BlobデータからオブジェクトURLを作成
-    const audioBlob = new Blob([response.data], { type: 'audio/mp3' });
-    const audioUrl = URL.createObjectURL(audioBlob);
-    
-    return audioUrl;
+    // ApiServiceを使用して発音を取得
+    return await ApiService.getPronunciation(text);
   } catch (error) {
     console.error('Error generating speech:', error);
     

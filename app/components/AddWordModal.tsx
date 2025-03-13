@@ -21,6 +21,7 @@ import {
 import { useState } from 'react';
 import { ProficiencyLevel } from '../models/types';
 import { fetchWordInfo } from '../utils/wordGenerator';
+import { geminiClient } from '../services/geminiApi';
 
 interface AddWordModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ interface AddWordModalProps {
     word: string;
     meaning: string;
     examples: string[];
+    examplesTranslation?: string[];
     category?: string;
     proficiency: ProficiencyLevel;
     etymology?: string;
@@ -91,15 +93,24 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
           partOfSpeech: partOfSpeech.trim() || undefined,
         };
       } else {
-        // APIから単語情報を取得
-        const wordInfo = await fetchWordInfo(word);
+        // バックエンドのGemini APIエンドポイントを呼び出す
+        const response = await fetch(`/api/sqlite-proxy/gemini-word-info?word=${encodeURIComponent(word.trim())}`);
+        
+        if (!response.ok) {
+          throw new Error('AI情報の取得に失敗しました');
+        }
+        
+        const aiWordInfo = await response.json();
         
         wordData = {
           word: word.trim(),
-          meaning: wordInfo.meaning,
-          examples: wordInfo.examples,
-          etymology: wordInfo.etymology,
-          relatedWords: wordInfo.relatedWords,
+          meaning: aiWordInfo.meaning || `${word}の意味`,
+          examples: aiWordInfo.examples || [],
+          examplesTranslation: aiWordInfo.examplesTranslation || [],
+          etymology: aiWordInfo.etymology || undefined,
+          relatedWords: aiWordInfo.relatedWords || [],
+          phonetic: aiWordInfo.phonetic || undefined,
+          partOfSpeech: aiWordInfo.partOfSpeech || undefined,
           proficiency: proficiency,
           category: category.trim() || undefined,
         };
@@ -156,6 +167,15 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
               />
             </FormControl>
             
+            <Checkbox 
+              isChecked={manualInput} 
+              onChange={(e) => setManualInput(e.target.checked)}
+              colorScheme="blue"
+              alignSelf="flex-start"
+            >
+              手動で単語情報を入力する（チェックしない場合はAI生成）
+            </Checkbox>
+            
             {manualInput && (
               <>
                 <FormControl>
@@ -199,15 +219,6 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
                 </FormControl>
               </>
             )}
-            
-            <Button 
-              variant="link" 
-              alignSelf="flex-start" 
-              onClick={() => setManualInput(!manualInput)}
-              size="sm"
-            >
-              {manualInput ? '自動取得に切り替え' : '手動で詳細情報を入力'}
-            </Button>
           </VStack>
         </ModalBody>
 
