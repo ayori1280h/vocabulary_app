@@ -32,8 +32,6 @@ export default function Sidebar({ activeCategory = 'all', onCategoryChange }: Si
   
   const categories = [
     { id: 'all', name: '📚 全ての単語', isActive: activeCategory === 'all' },
-    { id: 'new', name: '🆕 新規追加', isActive: activeCategory === 'new' },
-    { id: 'favorite', name: '⭐️ お気に入り', isActive: activeCategory === 'favorite' },
     { id: 'unknown', name: '🔄 未習得', isActive: activeCategory === 'unknown' },
     { id: 'learning', name: '📝 習得中', isActive: activeCategory === 'learning' },
     { id: 'mastered', name: '✅ 習得済み', isActive: activeCategory === 'mastered' },

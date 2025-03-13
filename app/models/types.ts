@@ -1,8 +1,8 @@
 // 習得度の定義
 export enum ProficiencyLevel {
-  UNKNOWN = 'unknown',
-  LEARNING = 'learning',
-  MASTERED = 'mastered'
+  UNKNOWN = 'UNKNOWN',
+  LEARNING = 'LEARNING',
+  MASTERED = 'MASTERED'
 }
 
 // 単語データの型定義
@@ -11,12 +11,19 @@ export interface VocabularyItem {
   word: string;
   meaning: string;
   examples: string[];
+  examplesTranslation?: string[];
   etymology?: string;
   relatedWords?: string[];
   proficiency: ProficiencyLevel;
   category?: string;
   createdAt: number;
-  updatedAt: number;
+  updatedAt?: number;
+  lastReviewed?: number;
+  reviewCount?: number;
+  phonetic?: string;
+  partOfSpeech?: string;
+  notes?: string;
+  tags?: string[];
 }
 
 // カテゴリーの型定義

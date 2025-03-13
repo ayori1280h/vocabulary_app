@@ -46,3 +46,12 @@ next-env.d.ts
 
 **/*.mp3
 **/*.wav
+
+# SQLite
+**/*.db
+**/*.db-journal
+**/*.db-trace
+**/*.db-wal
+**/*.db-lock
+**/*.db-shm
+**/*.db-trace

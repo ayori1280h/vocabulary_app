@@ -4,6 +4,8 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// SQLiteリポジトリをインポート
+const wordRepository = require('./repositories/wordRepository');
 // Express アプリケーションの初期化
 const app = express();
 const port = process.env.PORT || 5000;
@@ -106,7 +108,185 @@ app.post('/api/speech', async (req, res) => {
   }
 });
 
+// SQLite APIエンドポイント
+
+// 全単語を取得
+app.get('/api/words', async (req, res) => {
+  try {
+    const words = await wordRepository.getAllWords();
+    res.json(words);
+  } catch (error) {
+    console.error('単語取得エラー:', error);
+    res.status(500).json({ error: '単語の取得に失敗しました' });
+  }
+});
+
+// 単語の詳細情報を取得
+app.get('/api/words/:id', async (req, res) => {
+  try {
+    const wordId = parseInt(req.params.id);
+    const wordDetails = await wordRepository.getWordDetails(wordId);
+    
+    if (!wordDetails) {
+      return res.status(404).json({ error: '単語が見つかりません' });
+    }
+    
+    res.json(wordDetails);
+  } catch (error) {
+    console.error('単語詳細取得エラー:', error);
+    res.status(500).json({ error: '単語詳細の取得に失敗しました' });
+  }
+});
+
+// 単語検索
+app.get('/api/search', async (req, res) => {
+  try {
+    const { term } = req.query;
+    
+    if (!term) {
+      return res.status(400).json({ error: '検索キーワードが必要です' });
+    }
+    
+    const words = await wordRepository.searchWords(term);
+    res.json(words);
+  } catch (error) {
+    console.error('単語検索エラー:', error);
+    res.status(500).json({ error: '単語の検索に失敗しました' });
+  }
+});
+
+// 新しい単語を追加
+app.post('/api/words', async (req, res) => {
+  try {
+    const wordData = req.body;
+    
+    if (!wordData.word) {
+      return res.status(400).json({ error: '単語が必要です' });
+    }
+    
+    const wordId = await wordRepository.createWord(wordData);
+    const newWord = await wordRepository.getWordDetails(wordId);
+    
+    res.status(201).json(newWord);
+  } catch (error) {
+    console.error('単語追加エラー:', error);
+    res.status(500).json({ error: '単語の追加に失敗しました' });
+  }
+});
+
+// 単語の状態を更新
+app.patch('/api/words/:id/status', async (req, res) => {
+  try {
+    const wordId = parseInt(req.params.id);
+    const { status } = req.body;
+    
+    if (!status || !['unknown', 'learning', 'mastered'].includes(status)) {
+      return res.status(400).json({ error: '有効な状態が必要です: unknown, learning, mastered' });
+    }
+    
+    await wordRepository.updateWordStatus(wordId, status);
+    const updatedWord = await wordRepository.getWordDetails(wordId);
+    
+    res.json(updatedWord);
+  } catch (error) {
+    console.error('単語状態更新エラー:', error);
+    res.status(500).json({ error: '単語状態の更新に失敗しました' });
+  }
+});
+
+// 単語を削除
+app.delete('/api/words/:id', async (req, res) => {
+  try {
+    const wordId = parseInt(req.params.id);
+    await wordRepository.deleteWord(wordId);
+    
+    res.status(204).end();
+  } catch (error) {
+    console.error('単語削除エラー:', error);
+    res.status(500).json({ error: '単語の削除に失敗しました' });
+  }
+});
+
+// 状態別に単語を取得
+app.get('/api/words-by-status/:status', async (req, res) => {
+  try {
+    const { status } = req.params;
+    
+    if (!['unknown', 'learning', 'mastered'].includes(status)) {
+      return res.status(400).json({ error: '有効な状態が必要です: unknown, learning, mastered' });
+    }
+    
+    const words = await wordRepository.getWordsByStatus(status);
+    res.json(words);
+  } catch (error) {
+    console.error('状態別単語取得エラー:', error);
+    res.status(500).json({ error: '状態別単語の取得に失敗しました' });
+  }
+});
+
+// データベースの移行API（ローカルストレージからSQLiteへの移行）
+app.post('/api/migrate-data', async (req, res) => {
+  try {
+    const { words } = req.body;
+    
+    if (!words || !Array.isArray(words)) {
+      return res.status(400).json({ error: '単語データが必要です' });
+    }
+    
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: []
+    };
+    
+    // トランザクションでマイグレーション
+    for (const word of words) {
+      try {
+        // 単語データの変換（古い形式から新しい形式へ）
+        const newWordData = {
+          word: word.word,
+          phonetic: word.phonetic || '',
+          part_of_speech: word.partOfSpeech || '',
+          status: (word.proficiency || 'unknown').toLowerCase(), // ProficiencyLevel を status に変換
+          definitions: [{
+            definition: word.meaning || '',
+            part_of_speech: word.partOfSpeech || ''
+          }],
+          examples: word.examples ? word.examples.map(ex => ({
+            example: ex,
+            translation: ''
+          })) : [],
+          etymologies: word.etymology ? [{
+            etymology: word.etymology
+          }] : [],
+          related_words: word.relatedWords ? word.relatedWords.map(rel => ({
+            related_word: rel,
+            relationship_type: ''
+          })) : []
+        };
+        
+        await wordRepository.createWord(newWordData);
+        results.success++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          word: word.word,
+          error: error.message
+        });
+      }
+    }
+    
+    res.json({
+      message: `${results.success}個の単語を移行しました。${results.failed}個の単語が失敗しました。`,
+      results
+    });
+  } catch (error) {
+    console.error('データ移行エラー:', error);
+    res.status(500).json({ error: 'データ移行に失敗しました' });
+  }
+});
+
 // サーバー起動
 app.listen(port, () => {
-  console.log(`音声APIサーバーが http://localhost:${port} で起動しました`);
+  console.log(`サーバーが http://localhost:${port} で起動しました`);
 }); 

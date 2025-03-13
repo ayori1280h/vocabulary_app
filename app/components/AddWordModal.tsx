@@ -15,16 +15,27 @@ import {
   Textarea,
   VStack,
   useColorModeValue,
+  Select,
+  Checkbox,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { VocabularyItem, ProficiencyLevel } from '../models/types';
-import { nanoid } from 'nanoid';
+import { ProficiencyLevel } from '../models/types';
 import { fetchWordInfo } from '../utils/wordGenerator';
 
 interface AddWordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddWord: (word: VocabularyItem) => void;
+  onAddWord: (word: Partial<{
+    word: string;
+    meaning: string;
+    examples: string[];
+    category?: string;
+    proficiency: ProficiencyLevel;
+    etymology?: string;
+    relatedWords?: string[];
+    phonetic?: string;
+    partOfSpeech?: string;
+  }>) => void;
 }
 
 export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModalProps) {
@@ -33,6 +44,10 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
   const [manualInput, setManualInput] = useState(false);
   const [meaning, setMeaning] = useState('');
   const [category, setCategory] = useState('');
+  const [phonetic, setPhonetic] = useState('');
+  const [partOfSpeech, setPartOfSpeech] = useState('');
+  const [examples, setExamples] = useState('');
+  const [proficiency, setProficiency] = useState<ProficiencyLevel>(ProficiencyLevel.UNKNOWN);
 
   const modalBg = useColorModeValue('white', 'gray.800');
   const inputBg = useColorModeValue('white', 'gray.700');
@@ -42,6 +57,10 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
     setWord('');
     setMeaning('');
     setCategory('');
+    setPhonetic('');
+    setPartOfSpeech('');
+    setExamples('');
+    setProficiency(ProficiencyLevel.UNKNOWN);
     setManualInput(false);
   };
 
@@ -62,33 +81,27 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
       
       if (manualInput) {
         // 手動入力データを使用
-        const now = Date.now();
         wordData = {
-          id: nanoid(),
           word: word.trim(),
           meaning: meaning.trim() || `${word}の意味`,
-          examples: [],
-          proficiency: ProficiencyLevel.UNKNOWN,
+          examples: examples ? examples.split('\n').map(e => e.trim()).filter(e => e) : [],
+          proficiency: proficiency,
           category: category.trim() || undefined,
-          createdAt: now,
-          updatedAt: now,
+          phonetic: phonetic.trim() || undefined,
+          partOfSpeech: partOfSpeech.trim() || undefined,
         };
       } else {
         // APIから単語情報を取得
         const wordInfo = await fetchWordInfo(word);
-        const now = Date.now();
         
         wordData = {
-          id: nanoid(),
           word: word.trim(),
           meaning: wordInfo.meaning,
           examples: wordInfo.examples,
           etymology: wordInfo.etymology,
           relatedWords: wordInfo.relatedWords,
-          proficiency: ProficiencyLevel.UNKNOWN,
+          proficiency: proficiency,
           category: category.trim() || undefined,
-          createdAt: now,
-          updatedAt: now,
         };
       }
 
@@ -121,6 +134,19 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
             </FormControl>
             
             <FormControl>
+              <FormLabel>習得状態</FormLabel>
+              <Select 
+                value={proficiency} 
+                onChange={(e) => setProficiency(e.target.value as ProficiencyLevel)} 
+                bg={inputBg}
+              >
+                <option value={ProficiencyLevel.UNKNOWN}>未習得</option>
+                <option value={ProficiencyLevel.LEARNING}>学習中</option>
+                <option value={ProficiencyLevel.MASTERED}>習得済み</option>
+              </Select>
+            </FormControl>
+            
+            <FormControl>
               <FormLabel>カテゴリ（オプション）</FormLabel>
               <Input
                 placeholder="カテゴリを入力"
@@ -131,15 +157,47 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
             </FormControl>
             
             {manualInput && (
-              <FormControl>
-                <FormLabel>意味（オプション）</FormLabel>
-                <Textarea
-                  placeholder="単語の意味を入力（空白の場合は自動取得されます）"
-                  value={meaning}
-                  onChange={(e) => setMeaning(e.target.value)}
-                  bg={inputBg}
-                />
-              </FormControl>
+              <>
+                <FormControl>
+                  <FormLabel>意味</FormLabel>
+                  <Textarea
+                    placeholder="単語の意味を入力"
+                    value={meaning}
+                    onChange={(e) => setMeaning(e.target.value)}
+                    bg={inputBg}
+                  />
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>発音記号（オプション）</FormLabel>
+                  <Input
+                    placeholder="発音記号を入力"
+                    value={phonetic}
+                    onChange={(e) => setPhonetic(e.target.value)}
+                    bg={inputBg}
+                  />
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>品詞（オプション）</FormLabel>
+                  <Input
+                    placeholder="品詞を入力"
+                    value={partOfSpeech}
+                    onChange={(e) => setPartOfSpeech(e.target.value)}
+                    bg={inputBg}
+                  />
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>例文（オプション、1行に1例文）</FormLabel>
+                  <Textarea
+                    placeholder="例文を入力（1行に1例文）"
+                    value={examples}
+                    onChange={(e) => setExamples(e.target.value)}
+                    bg={inputBg}
+                  />
+                </FormControl>
+              </>
             )}
             
             <Button 
@@ -148,7 +206,7 @@ export default function AddWordModal({ isOpen, onClose, onAddWord }: AddWordModa
               onClick={() => setManualInput(!manualInput)}
               size="sm"
             >
-              {manualInput ? '自動取得に切り替え' : '手動で意味を入力'}
+              {manualInput ? '自動取得に切り替え' : '手動で詳細情報を入力'}
             </Button>
           </VStack>
         </ModalBody>
