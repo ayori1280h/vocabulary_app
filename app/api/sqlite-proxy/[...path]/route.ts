@@ -70,18 +70,18 @@ export async function POST(request: NextRequest, context: { params: { path: stri
     });
 
     
-    // // 音声APIの場合は特別な処理（音声ファイルをそのまま返す）
-    // if (path === 'speech') {
-    //   const arrayBuffer = await response.arrayBuffer();
-    //   const headers = new Headers(response.headers);
-    //   headers.set('Content-Type', 'audio/mpeg'); // 音声ファイルのMIMEタイプを設定
+    // 音声APIの場合は特別な処理（音声ファイルをそのまま返す）
+    if (path === 'speech') {
+      const arrayBuffer = await response.arrayBuffer();
+      const headers = new Headers(response.headers);
+      headers.set('Content-Type', 'audio/mpeg'); // 音声ファイルのMIMEタイプを設定
       
-    //   return new NextResponse(arrayBuffer, {
-    //     status: response.status,
-    //     statusText: response.statusText,
-    //     headers
-    //   });
-    // }
+      return new NextResponse(arrayBuffer, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+      });
+    }
     
     // 通常のJSON APIの場合
     const data = await response.json();

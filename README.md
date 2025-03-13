@@ -34,25 +34,19 @@ graph TB
     subgraph "サーバー"
         NextServer["Next.js Server\n+ API Routes\n+ SSR"]
         SQLite["SQLite Database\n+ words\n+ definitions\n+ examples\n+ etymologies\n+ related_words"]
-        WebSpeechController["Web Speech Controller\n+ Text-to-Speech処理\n+ 音声データ生成・配信"]
         GeminiController["Gemini API Controller\n+ 単語情報取得\n+ レスポンス整形"]
         
         NextServer --> SQLite
-        NextServer --> WebSpeechController
         NextServer --> GeminiController
     end
     
     subgraph "外部サービス"
         GeminiAPI["Gemini API\n+ generateContent()"]
-        WebSpeechAPI["Web Speech API\n+ SpeechSynthesis"]
     end
     
     Browser --> NextServer
     GeminiController --> GeminiAPI
-    WebSpeechController --> WebSpeechAPI
     
-    note["すべての外部API通信は\nサーバー経由で行われる"]
-    Browser --- note
 ```
 
 ## データベースER図（Mermaid）
@@ -114,8 +108,8 @@ sequenceDiagram
     participant DB as SQLite DB
     participant APIController as Gemini API Controller
     participant API as Gemini API
-    participant SpeechController as Web Speech Controller
-    participant SpeechAPI as Web Speech API
+
+
     
     ユーザー->>Browser: 単語カードをクリック
     Browser->>Server: 単語情報をリクエスト
@@ -133,12 +127,6 @@ sequenceDiagram
     Server-->>Browser: AI情報を表示
     
     ユーザー->>Browser: 例文の発音をクリック
-    Browser->>Server: 発音リクエスト
-    Server->>SpeechController: 音声合成リクエスト
-    SpeechController->>SpeechAPI: 音声データ生成
-    SpeechAPI-->>SpeechController: 音声データ
-    SpeechController-->>Server: 処理済み音声データ
-    Server-->>Browser: 音声データ
     Browser->>Browser: 音声を再生
 ```
 
@@ -231,8 +219,8 @@ npm install
 
 3. 環境変数の設定
 ```bash
-# .env.local ファイルを作成
-NEXT_PUBLIC_GEMINI_API_KEY=あなたのGemini APIキー
+# server/.env ファイルを作成
+GEMINI_API_KEY=あなたのGemini APIキー
 ```
 
 4. データベースの初期化
