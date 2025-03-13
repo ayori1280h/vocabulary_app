@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { Box, Text, Flex, IconButton, useColorModeValue } from '@chakra-ui/react';
 import { VocabularyItem } from '../models/types';
-import { pronounceWord } from '../utils/speechEngine';
-import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
+import { DeleteIcon } from '@chakra-ui/icons';
 
 interface VocabularyCardProps {
   item: VocabularyItem;
@@ -15,28 +14,13 @@ interface VocabularyCardProps {
 }
 
 export default function VocabularyCard({ item, onDelete, onClick, isDragging, isDraggable = true }: VocabularyCardProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  
   // カードの背景色
   const cardBg = useColorModeValue('white', 'gray.800');
   const cardBorder = useColorModeValue('gray.200', 'gray.700');
-  const soundBtnBg = useColorModeValue('gray.100', 'gray.700');
+  const btnBg = useColorModeValue('gray.100', 'gray.700');
   
   // カテゴリーを取得（実際のアプリでは適切に設定）
   const category = item.category || 'その他';
-  
-  // 単語を発音する関数
-  const handlePronounce = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // カードのクリックイベントが発火しないようにする
-    try {
-      setIsPlaying(true);
-      await pronounceWord(item.word);
-    } catch (error) {
-      console.error('発音エラー:', error);
-    } finally {
-      setIsPlaying(false);
-    }
-  };
   
   // 削除処理を実行する関数
   const handleDelete = (e: React.MouseEvent) => {
@@ -55,8 +39,8 @@ export default function VocabularyCard({ item, onDelete, onClick, isDragging, is
   
   return (
     <Box
-      maxW="200px"
-      h="80px"
+      maxW="180px"
+      h="70px"
       borderWidth="1px"
       borderColor={cardBorder}
       borderRadius="md"
@@ -76,37 +60,22 @@ export default function VocabularyCard({ item, onDelete, onClick, isDragging, is
       data-proficiency={item.proficiency}
     >
       <Flex justifyContent="space-between" alignItems="center" h="full">
-        <Text fontWeight="bold" fontSize="lg" noOfLines={2}>
+        <Text fontWeight="bold" fontSize="lg" noOfLines={2} flex="1">
           {item.word}
         </Text>
         
-        <Flex>
+        {onDelete && (
           <IconButton
-            aria-label="発音"
-            icon={<RepeatIcon />}
+            aria-label="削除"
+            icon={<DeleteIcon />}
             size="sm"
             isRound
-            bg={soundBtnBg}
-            mr={1}
+            bg={btnBg}
             color="gray.600"
-            isLoading={isPlaying}
-            onClick={handlePronounce}
-            _hover={{ bg: 'gray.200' }}
+            onClick={handleDelete}
+            _hover={{ bg: 'red.100', color: 'red.500' }}
           />
-          
-          {onDelete && (
-            <IconButton
-              aria-label="削除"
-              icon={<DeleteIcon />}
-              size="sm"
-              isRound
-              bg={soundBtnBg}
-              color="gray.600"
-              onClick={handleDelete}
-              _hover={{ bg: 'red.100', color: 'red.500' }}
-            />
-          )}
-        </Flex>
+        )}
       </Flex>
     </Box>
   );
