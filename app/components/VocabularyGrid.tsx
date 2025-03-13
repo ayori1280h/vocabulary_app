@@ -154,7 +154,11 @@ export default function VocabularyGrid({
           ...selectedItem,
           meaning: data.meaning || selectedItem.meaning,
           examples: data.examples || selectedItem.examples,
+          examplesTranslation: data.examplesTranslation || selectedItem.examplesTranslation,
           etymology: data.etymology || selectedItem.etymology,
+          relatedWords: data.relatedWords || selectedItem.relatedWords,
+          phonetic: data.phonetic || selectedItem.phonetic,
+          partOfSpeech: data.partOfSpeech || selectedItem.partOfSpeech
         });
         
         toast({
@@ -479,6 +483,7 @@ export default function VocabularyGrid({
                 right={8}
                 boxShadow="lg"
                 onClick={onAddClick}
+                zIndex={1000}
               />
             </GridItem>
             
@@ -566,7 +571,20 @@ export default function VocabularyGrid({
                         <List spacing={3}>
                           {selectedItem.examples.map((example, index) => (
                             <ListItem key={index} mb={2}>
-                              <Text fontWeight="medium">• {example}</Text>
+                              <Flex align="center">
+                                <Text fontWeight="medium" flex="1">• {example}</Text>
+                                <IconButton
+                                  aria-label="例文を発音"
+                                  icon={<FaVolumeUp />}
+                                  size="sm"
+                                  variant="ghost"
+                                  colorScheme="blue"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    pronounceWord(example);
+                                  }}
+                                />
+                              </Flex>
                               {selectedItem.examplesTranslation && selectedItem.examplesTranslation[index] && (
                                 <Text fontSize="sm" color="gray.600" ml={4} mt={1}>
                                   {selectedItem.examplesTranslation[index]}
