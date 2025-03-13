@@ -58,6 +58,7 @@ export default function VocabularyGrid({
   const learningItems = items.filter(item => item.proficiency === ProficiencyLevel.LEARNING);
   const masteredItems = items.filter(item => item.proficiency === ProficiencyLevel.MASTERED);
   
+  // すべてのuseColorModeValueをここに移動
   const headerBg = useColorModeValue('white', 'gray.800');
   const addButtonBg = useColorModeValue('blue.500', 'blue.600');
   const detailsBg = useColorModeValue('white', 'gray.800');
@@ -68,6 +69,15 @@ export default function VocabularyGrid({
   const unknownBg = useColorModeValue('gray.50', 'gray.800');
   const learningBg = useColorModeValue('blue.50', 'blue.900');
   const masteredBg = useColorModeValue('green.50', 'green.900');
+  
+  // スクロールバーのスタイル用のカラー
+  const scrollbarTrackBg = useColorModeValue('gray.100', 'gray.700');
+  const scrollbarThumbBg = useColorModeValue('gray.300', 'gray.600');
+  
+  // テキストカラー
+  const grayTextColor = useColorModeValue('gray.500', 'gray.400');
+  const phoneticTextColor = useColorModeValue('gray.500', 'gray.400');
+  const translationTextColor = useColorModeValue('gray.600', 'gray.400');
   
   // カードクリック時の処理
   const handleCardClick = useCallback(async (item: VocabularyItem) => {
@@ -372,11 +382,11 @@ export default function VocabularyGrid({
                         width: '8px',
                       },
                       '&::-webkit-scrollbar-track': {
-                        background: useColorModeValue('gray.100', 'gray.700'),
+                        background: scrollbarTrackBg,
                         borderRadius: '4px',
                       },
                       '&::-webkit-scrollbar-thumb': {
-                        background: useColorModeValue('gray.300', 'gray.600'),
+                        background: scrollbarThumbBg,
                         borderRadius: '4px',
                       },
                     }}
@@ -421,11 +431,11 @@ export default function VocabularyGrid({
                         width: '8px',
                       },
                       '&::-webkit-scrollbar-track': {
-                        background: useColorModeValue('gray.100', 'gray.700'),
+                        background: scrollbarTrackBg,
                         borderRadius: '4px',
                       },
                       '&::-webkit-scrollbar-thumb': {
-                        background: useColorModeValue('gray.300', 'gray.600'),
+                        background: scrollbarThumbBg,
                         borderRadius: '4px',
                       },
                     }}
@@ -470,11 +480,11 @@ export default function VocabularyGrid({
                         width: '8px',
                       },
                       '&::-webkit-scrollbar-track': {
-                        background: useColorModeValue('gray.100', 'gray.700'),
+                        background: scrollbarTrackBg,
                         borderRadius: '4px',
                       },
                       '&::-webkit-scrollbar-thumb': {
-                        background: useColorModeValue('gray.300', 'gray.600'),
+                        background: scrollbarThumbBg,
                         borderRadius: '4px',
                       },
                     }}
@@ -535,11 +545,11 @@ export default function VocabularyGrid({
                     width: '8px',
                   },
                   '&::-webkit-scrollbar-track': {
-                    background: useColorModeValue('gray.100', 'gray.700'),
+                    background: scrollbarTrackBg,
                     borderRadius: '4px',
                   },
                   '&::-webkit-scrollbar-thumb': {
-                    background: useColorModeValue('gray.300', 'gray.600'),
+                    background: scrollbarThumbBg,
                     borderRadius: '4px',
                   },
                 }}
@@ -578,7 +588,7 @@ export default function VocabularyGrid({
                     </Flex>
                     
                     {selectedItem.phonetic && (
-                      <Text fontSize="lg" mb={2} color="gray.500">
+                      <Text fontSize="lg" mb={2} color={phoneticTextColor}>
                         {selectedItem.phonetic}
                       </Text>
                     )}
@@ -618,7 +628,7 @@ export default function VocabularyGrid({
                                 />
                               </Flex>
                               {selectedItem.examplesTranslation && selectedItem.examplesTranslation[index] && (
-                                <Text fontSize="sm" color="gray.600" ml={4} mt={1}>
+                                <Text fontSize="sm" color={translationTextColor} ml={4} mt={1}>
                                   {selectedItem.examplesTranslation[index]}
                                 </Text>
                               )}
@@ -667,7 +677,7 @@ export default function VocabularyGrid({
                     align="center" 
                     justify="center" 
                     h="full" 
-                    color="gray.500"
+                    color={grayTextColor}
                   >
                     <Icon as={FaInfoCircle} boxSize={10} mb={4} />
                     <Text fontSize="lg">単語をクリックすると詳細が表示されます</Text>
