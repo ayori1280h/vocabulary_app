@@ -275,6 +275,169 @@ class WordRepository {
       );
     });
   }
+
+  /**
+   * 単語の詳細情報を更新する
+   * @param {number} wordId - 単語のID
+   * @param {Object} wordData - 更新する単語データ
+   * @returns {Promise<void>}
+   */
+  updateWordDetails(wordId, wordData) {
+    return new Promise((resolve, reject) => {
+      // トランザクションを開始
+      db.run('BEGIN TRANSACTION', async (err) => {
+        if (err) return reject(err);
+        
+        try {
+          // 単語の基本情報を更新
+          await new Promise((resolveUpdate, rejectUpdate) => {
+            db.run(
+              `UPDATE words 
+               SET phonetic = ?,
+                   part_of_speech = ?,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?`,
+              [wordData.phonetic || '', wordData.part_of_speech || '', wordId],
+              function(err) {
+                if (err) return rejectUpdate(err);
+                if (this.changes === 0) return rejectUpdate(new Error('単語が見つかりません'));
+                resolveUpdate();
+              }
+            );
+          });
+          
+          // 定義を更新（既存のものを削除して新しく追加）
+          if (wordData.definitions) {
+            // 既存の定義を削除
+            await new Promise((resolveDelete, rejectDelete) => {
+              db.run(`DELETE FROM definitions WHERE word_id = ?`, [wordId], (err) => {
+                if (err) return rejectDelete(err);
+                resolveDelete();
+              });
+            });
+            
+            // 新しい定義を追加
+            if (wordData.definitions.length > 0) {
+              for (const def of wordData.definitions) {
+                await new Promise((resolveInsert, rejectInsert) => {
+                  db.run(
+                    `INSERT INTO definitions (word_id, definition, part_of_speech)
+                     VALUES (?, ?, ?)`,
+                    [wordId, def.definition, def.part_of_speech || ''],
+                    (err) => {
+                      if (err) return rejectInsert(err);
+                      resolveInsert();
+                    }
+                  );
+                });
+              }
+            }
+          }
+          
+          // 例文を更新（既存のものを削除して新しく追加）
+          if (wordData.examples) {
+            // 既存の例文を削除
+            await new Promise((resolveDelete, rejectDelete) => {
+              db.run(`DELETE FROM examples WHERE word_id = ?`, [wordId], (err) => {
+                if (err) return rejectDelete(err);
+                resolveDelete();
+              });
+            });
+            
+            // 新しい例文を追加
+            if (wordData.examples.length > 0) {
+              for (const ex of wordData.examples) {
+                await new Promise((resolveInsert, rejectInsert) => {
+                  db.run(
+                    `INSERT INTO examples (word_id, example, translation)
+                     VALUES (?, ?, ?)`,
+                    [wordId, ex.example, ex.translation || ''],
+                    (err) => {
+                      if (err) return rejectInsert(err);
+                      resolveInsert();
+                    }
+                  );
+                });
+              }
+            }
+          }
+          
+          // 語源を更新（既存のものを削除して新しく追加）
+          if (wordData.etymologies) {
+            // 既存の語源を削除
+            await new Promise((resolveDelete, rejectDelete) => {
+              db.run(`DELETE FROM etymologies WHERE word_id = ?`, [wordId], (err) => {
+                if (err) return rejectDelete(err);
+                resolveDelete();
+              });
+            });
+            
+            // 新しい語源を追加
+            if (wordData.etymologies.length > 0) {
+              for (const ety of wordData.etymologies) {
+                await new Promise((resolveInsert, rejectInsert) => {
+                  db.run(
+                    `INSERT INTO etymologies (word_id, etymology)
+                     VALUES (?, ?)`,
+                    [wordId, ety.etymology],
+                    (err) => {
+                      if (err) return rejectInsert(err);
+                      resolveInsert();
+                    }
+                  );
+                });
+              }
+            }
+          }
+          
+          // 関連語を更新（既存のものを削除して新しく追加）
+          if (wordData.related_words) {
+            // 既存の関連語を削除
+            await new Promise((resolveDelete, rejectDelete) => {
+              db.run(`DELETE FROM related_words WHERE word_id = ?`, [wordId], (err) => {
+                if (err) return rejectDelete(err);
+                resolveDelete();
+              });
+            });
+            
+            // 新しい関連語を追加
+            if (wordData.related_words.length > 0) {
+              for (const rel of wordData.related_words) {
+                await new Promise((resolveInsert, rejectInsert) => {
+                  db.run(
+                    `INSERT INTO related_words (word_id, related_word, relationship_type)
+                     VALUES (?, ?, ?)`,
+                    [wordId, rel.related_word, rel.relationship_type || ''],
+                    (err) => {
+                      if (err) return rejectInsert(err);
+                      resolveInsert();
+                    }
+                  );
+                });
+              }
+            }
+          }
+          
+          // トランザクションをコミット
+          await new Promise((resolveCommit, rejectCommit) => {
+            db.run('COMMIT', (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return rejectCommit(err);
+              }
+              resolveCommit();
+            });
+          });
+          
+          resolve();
+        } catch (error) {
+          // エラーが発生した場合はロールバック
+          db.run('ROLLBACK');
+          reject(error);
+        }
+      });
+    });
+  }
 }
 
 module.exports = new WordRepository(); 

@@ -3,6 +3,8 @@ const cors = require('cors');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
+require('dotenv').config(); // 環境変数を読み込む
 
 // SQLiteリポジトリをインポート
 const wordRepository = require('./repositories/wordRepository');
@@ -22,6 +24,9 @@ const AUDIO_DIR = path.join(__dirname, 'audio');
 if (!fs.existsSync(AUDIO_DIR)) {
   fs.mkdirSync(AUDIO_DIR, { recursive: true });
 }
+
+// 環境変数からGemini API Keyを取得
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 /**
  * テキストから音声ファイルを生成し、そのパスを返す
@@ -283,6 +288,103 @@ app.post('/api/migrate-data', async (req, res) => {
   } catch (error) {
     console.error('データ移行エラー:', error);
     res.status(500).json({ error: 'データ移行に失敗しました' });
+  }
+});
+
+// 単語の詳細情報を更新
+app.put('/api/words/:id/details', async (req, res) => {
+  try {
+    const wordId = parseInt(req.params.id);
+    const wordData = req.body;
+    
+    if (!wordId) {
+      return res.status(400).json({ error: '単語IDが必要です' });
+    }
+    
+    // 指定されたIDの単語が存在するか確認
+    const existingWord = await wordRepository.getWordDetails(wordId);
+    if (!existingWord) {
+      return res.status(404).json({ error: '単語が見つかりません' });
+    }
+    
+    // 単語詳細を更新
+    await wordRepository.updateWordDetails(wordId, wordData);
+    
+    // 更新後の単語情報を取得
+    const updatedWord = await wordRepository.getWordDetails(wordId);
+    
+    res.json(updatedWord);
+  } catch (error) {
+    console.error('単語詳細更新エラー:', error);
+    res.status(500).json({ error: '単語詳細の更新に失敗しました' });
+  }
+});
+
+// GeminiAPIエンドポイント
+app.get('/api/gemini-word-info', async (req, res) => {
+  try {
+    const { word } = req.query;
+    
+    if (!word) {
+      return res.status(400).json({ error: '単語が必要です' });
+    }
+    
+    // GeminiにAPIリクエストを送信
+    const prompt = `
+以下の英単語について詳細情報を提供してください:
+"${word}"
+
+JSON形式で、以下の情報を含めてください:
+{
+  "word": "単語",
+  "meaning": "意味の詳細な説明（日本語）",
+  "phonetic": "発音記号",
+  "partOfSpeech": "品詞",
+  "examples": ["例文1", "例文2", "例文3"],
+  "examplesTranslation": ["例文1の日本語訳", "例文2の日本語訳", "例文3の日本語訳"],
+  "etymology": "語源についての詳細",
+  "relatedWords": ["関連語1", "関連語2", "関連語3"]
+}
+
+例文は実用的なものを選び、それぞれに正確な日本語訳をつけてください。JSON形式以外の文章は含めないでください。
+    `;
+    
+    const response = await axios.post(
+      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent',
+      {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 2048,
+        }
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY
+        }
+      }
+    );
+    
+    // レスポンスからテキストを抽出
+    const textResponse = response.data.candidates[0].content.parts[0].text;
+    
+    // JSONを抽出（テキストにJSON以外の文字列が含まれている場合に対応）
+    const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('有効なJSONレスポンスが見つかりませんでした');
+    }
+    
+    const wordInfo = JSON.parse(jsonMatch[0]);
+    res.json(wordInfo);
+  } catch (error) {
+    console.error('Gemini API エラー:', error);
+    res.status(500).json({ 
+      error: 'Gemini APIでの単語情報取得に失敗しました',
+      details: error.message
+    });
   }
 });
 

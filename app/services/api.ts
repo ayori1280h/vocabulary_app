@@ -282,4 +282,32 @@ export class ApiService {
       })) : []
     };
   }
+
+  /**
+   * 単語詳細情報を更新する
+   * @param id 単語ID
+   * @param wordDetails 更新する詳細情報
+   * @returns Promise<VocabularyItem>
+   */
+  static async updateWordDetails(id: number, wordDetails: any): Promise<VocabularyItem> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/words/${id}/details`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(wordDetails),
+      });
+      
+      if (!response.ok) {
+        throw new Error('単語詳細の更新に失敗しました');
+      }
+      
+      const data = await response.json();
+      return this.convertToVocabularyItem(data);
+    } catch (error) {
+      console.error('API error:', error);
+      throw error;
+    }
+  }
 } 
