@@ -17,7 +17,14 @@ import {
   ListItem,
   Button,
   Spinner,
-  useToast
+  useToast,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
+  useDisclosure
 } from '@chakra-ui/react';
 import { AddIcon, InfoIcon, RepeatIcon } from '@chakra-ui/icons';
 import VocabularyCard from './VocabularyCard';
@@ -52,6 +59,10 @@ export default function VocabularyGrid({
   const learningAreaRef = useRef<HTMLDivElement>(null);
   const masteredAreaRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
+  
+  // AI更新確認ダイアログの状態
+  const { isOpen: isAIUpdateDialogOpen, onOpen: onAIUpdateDialogOpen, onClose: onAIUpdateDialogClose } = useDisclosure();
+  const cancelRef = useRef<HTMLButtonElement>(null);
   
   // 習得レベル別の単語リスト
   const unknownItems = items.filter(item => item.proficiency === ProficiencyLevel.UNKNOWN);
@@ -129,9 +140,16 @@ export default function VocabularyGrid({
     }
   };
   
-  // AIによる単語情報の取得
+  // AIによる単語情報の取得（確認ダイアログを開く）
+  const openAIUpdateConfirm = () => {
+    if (!selectedItem) return;
+    onAIUpdateDialogOpen();
+  };
+  
+  // AIによる単語情報の取得実行（確認後）
   const handleFetchAIInfo = async () => {
     if (!selectedItem) return;
+    onAIUpdateDialogClose();
     
     try {
       setLoadingDetail(true);
@@ -664,7 +682,7 @@ export default function VocabularyGrid({
                       leftIcon={<Icon as={FaRobot} />}
                       colorScheme="teal"
                       size="sm"
-                      onClick={handleFetchAIInfo}
+                      onClick={openAIUpdateConfirm}
                       isLoading={loadingDetail}
                       w="full"
                     >
@@ -688,6 +706,34 @@ export default function VocabularyGrid({
           </Grid>
         </Box>
       )}
+      
+      {/* AI情報更新確認ダイアログ */}
+      <AlertDialog
+        isOpen={isAIUpdateDialogOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onAIUpdateDialogClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              AI情報更新の確認
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              「{selectedItem?.word}」の情報をAIによって更新しますか？この操作により、現在の詳細情報が上書きされます。
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onAIUpdateDialogClose}>
+                キャンセル
+              </Button>
+              <Button colorScheme="teal" onClick={handleFetchAIInfo} ml={3}>
+                更新する
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 } 
