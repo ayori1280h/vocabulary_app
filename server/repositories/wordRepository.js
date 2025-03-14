@@ -250,10 +250,85 @@ class WordRepository {
    */
   deleteWord(wordId) {
     return new Promise((resolve, reject) => {
-      db.run(`DELETE FROM words WHERE id = ?`, [wordId], function(err) {
-        if (err) return reject(err);
-        if (this.changes === 0) return reject(new Error('単語が見つかりません'));
-        resolve();
+      // トランザクションを開始
+      db.run('BEGIN TRANSACTION', async function(err) {
+        if (err) {
+          return reject(err);
+        }
+        
+        try {
+          // 関連テーブルのデータを削除
+          // 関連テーブルから順に削除することで、整合性を保つ
+          
+          // related_wordsテーブルから削除
+          await new Promise((resolveDelete, rejectDelete) => {
+            db.run(`DELETE FROM related_words WHERE word_id = ?`, [wordId], (err) => {
+              if (err) return rejectDelete(err);
+              resolveDelete();
+            });
+          });
+          
+          // etymologiesテーブルから削除
+          await new Promise((resolveDelete, rejectDelete) => {
+            db.run(`DELETE FROM etymologies WHERE word_id = ?`, [wordId], (err) => {
+              if (err) return rejectDelete(err);
+              resolveDelete();
+            });
+          });
+          
+          // examplesテーブルから削除
+          await new Promise((resolveDelete, rejectDelete) => {
+            db.run(`DELETE FROM examples WHERE word_id = ?`, [wordId], (err) => {
+              if (err) return rejectDelete(err);
+              resolveDelete();
+            });
+          });
+          
+          // definitionsテーブルから削除
+          await new Promise((resolveDelete, rejectDelete) => {
+            db.run(`DELETE FROM definitions WHERE word_id = ?`, [wordId], (err) => {
+              if (err) return rejectDelete(err);
+              resolveDelete();
+            });
+          });
+          
+          // 最後にwordsテーブルから削除
+          const result = await new Promise((resolveDelete, rejectDelete) => {
+            db.run(`DELETE FROM words WHERE id = ?`, [wordId], function(err) {
+              if (err) return rejectDelete(err);
+              resolveDelete(this.changes);
+            });
+          });
+          
+          // 削除対象がなかった場合
+          if (result === 0) {
+            await new Promise((_, rejectRollback) => {
+              db.run('ROLLBACK', (err) => {
+                if (err) rejectRollback(err);
+                reject(new Error('単語が見つかりません'));
+              });
+            });
+            return;
+          }
+          
+          // コミット
+          await new Promise((resolveCommit, rejectCommit) => {
+            db.run('COMMIT', (err) => {
+              if (err) return rejectCommit(err);
+              resolveCommit();
+            });
+          });
+          
+          resolve();
+        } catch (error) {
+          // エラーが発生した場合はロールバック
+          db.run('ROLLBACK', (rollbackErr) => {
+            if (rollbackErr) {
+              console.error('ロールバックエラー:', rollbackErr);
+            }
+            reject(error);
+          });
+        }
       });
     });
   }
