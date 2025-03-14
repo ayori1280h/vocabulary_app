@@ -354,7 +354,7 @@ JSON形式で、以下の情報を含めてください:
     `;
     
     const response = await axios.post(
-      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent',
+      'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent',
       {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
