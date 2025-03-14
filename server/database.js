@@ -93,12 +93,42 @@ if (!dbExists) {
   initializeDatabase()
     .then(() => {
       console.log('データベーススキーマが初期化されました');
+      // 初期化完了後、明示的にプロセスを終了
+      if (require.main === module) {
+        // このファイルが直接実行された場合のみプロセスを終了
+        setTimeout(() => {
+          db.close((err) => {
+            if (err) {
+              console.error('データベースクローズエラー:', err.message);
+              process.exit(1);
+            } else {
+              console.log('データベース接続を閉じました');
+              process.exit(0);
+            }
+          });
+        }, 100); // 少し待ってからクローズ
+      }
     })
     .catch(err => {
       console.error('データベーススキーマの初期化エラー:', err);
+      process.exit(1);
     });
 } else {
   console.log('既存のデータベースを使用します');
+  // 既存DBを使用する場合も、直接実行時はプロセスを終了
+  if (require.main === module) {
+    setTimeout(() => {
+      db.close((err) => {
+        if (err) {
+          console.error('データベースクローズエラー:', err.message);
+          process.exit(1);
+        } else {
+          console.log('データベース接続を閉じました');
+          process.exit(0);
+        }
+      });
+    }, 100); // 少し待ってからクローズ
+  }
 }
 
 // プロセス終了時にデータベース接続をクローズ
